@@ -1,0 +1,82 @@
+page { height: 100vh; overflow: hidden; display: flex; flex-direction: column; background-color: #FFFBF0; font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, sans-serif;}
+.page-container { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.header { background: linear-gradient(to bottom, #FFF5D1, #FFFBF0); padding: 0 24px 12px; flex-shrink: 0; }
+.header-title { font-size: 24px; font-weight: bold; color: #1f2937; display: block; }
+.header-sub { font-size: 14px; color: #6b7280; margin-top: 4px; display: block; }
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0 16px; }
+
+/* Tabs 调整 */
+.tabs-container { margin-bottom: 12px; flex-shrink: 0; display: flex; justify-content: center;}
+.tab-switch { display: flex; background-color: rgba(229,231,235,0.5); padding: 4px; border-radius: 99px; width: 180px; }
+.tab-item { flex: 1; padding: 4px 0; text-align: center; font-size: 13px; font-weight: bold; color: #6b7280; border-radius: 99px; transition: all 0.2s; }
+.tab-item.active { background-color: #ffffff; color: #1f2937; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+.scroll-area { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+.empty-state { text-align: center; padding: 40px 0; font-size: 13px; color: #9ca3af; background-color: #ffffff; border-radius: 16px; border: 1px dashed #d1d5db; }
+
+/* ======== 极致压缩 Feed Card ======== */
+.feed-card { background-color: #ffffff; padding: 10px 12px; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); border: 1px solid #f3f4f6; margin-bottom: 8px; }
+.feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.feed-user { display: flex; align-items: center; }
+.feed-avatar { width: 24px; height: 24px; background-color: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; margin-right: 6px; }
+.feed-user-info { display: flex; flex-direction: column; justify-content: center; }
+.feed-name { font-size: 11px; font-weight: bold; color: #1f2937; }
+.feed-publish-time { font-size: 9px; color: #9ca3af; font-weight: normal; }
+.feed-time { font-size: 9px; color: #9ca3af; margin-top: 2px; }
+.feed-duration-tag { font-size: 9px; background-color: #f9fafb; color: #6b7280; padding: 2px 6px; border-radius: 6px; }
+.failed-tag { background-color: #f3f4f6; color: #9ca3af; font-weight: bold; }
+.feed-body { display: flex; align-items: center; background-color: #f9fafb; padding: 8px; border-radius: 12px; margin-bottom: 8px; }
+.feed-body-emoji { font-size: 20px; margin-right: 8px; }
+.feed-body-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.feed-note { font-size: 11px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold;}
+
+/* 互动区右靠齐且精简样式 */
+.feed-footer { display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #f9fafb; padding-top: 8px; }
+.interact-btn { display: flex; align-items: center; justify-content: center; font-size: 11px; padding: 4px 16px; border-radius: 99px; transition: all 0.2s; background-color: #f9fafb; color: #6b7280; border: 1px solid transparent; }
+.interact-active { background-color: #fefce8; color: #a16207; font-weight: bold; border-color: #fef08a; }
+.interact-icon { margin-right: 4px; font-size: 13px; }
+
+/* ======== 极致压缩 Leaderboard ======== */
+.board-tabs { width: 100%; white-space: nowrap; margin-bottom: 8px; }
+.board-tab { display: inline-block; padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; background-color: #ffffff; color: #4b5563; border: 1px solid #e5e7eb; transition: all 0.2s; margin-right: 8px; }
+.board-tab.active { background-color: #facc15; color: #713f12; border-color: #facc15; }
+
+.board-card { background-color: #ffffff; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); border: 1px solid #fef08a; overflow: hidden; }
+.board-header-row { display: flex; background-color: #fefce8; padding: 8px 12px; font-size: 10px; font-weight: bold; color: #854d0e; }
+.board-empty { text-align: center; padding: 30px 0; font-size: 12px; color: #9ca3af; }
+.col-rank { width: 36px; text-align: center; flex-shrink: 0; }
+.col-user { flex: 1; padding-left: 8px; }
+.col-score { width: 56px; text-align: right; flex-shrink: 0; }
+.board-list { display: flex; flex-direction: column; }
+.board-item { display: flex; padding: 6px 12px; align-items: center; border-bottom: 1px solid #f9fafb; transition: background-color 0.2s; }
+.board-item:active { background-color: #f9fafb; }
+.board-item:last-child { border-bottom: none; }
+.rank-num { font-size: 14px; font-weight: bold; color: #d1d5db; }
+.rank-0 { color: #eab308; font-size: 16px; } .rank-1 { color: #9ca3af; font-size: 16px; } .rank-2 { color: #d97706; font-size: 16px; }
+.board-avatar { width: 26px; height: 26px; background-color: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; margin-right: 8px; flex-shrink: 0; }
+.board-user-info { display: flex; flex-direction: column; justify-content: center;}
+.board-name { font-size: 12px; font-weight: bold; color: #1f2937; }
+.board-avg { font-size: 9px; color: #9ca3af; }
+.score-num { font-size: 14px; font-weight: 900; color: #ca8a04; }
+
+/* Profile Modal */
+.modal-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal-mask { position: absolute; inset: 0; background-color: rgba(0,0,0,0.6); }
+.profile-modal { background-color: #ffffff; width: 100%; max-width: 300px; border-radius: 24px; padding: 20px; position: relative; z-index: 60; display: flex; flex-direction: column; align-items: center; text-align: center; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;}
+.profile-header-bg { position: absolute; top: 0; left: 0; width: 100%; height: 80px; background: linear-gradient(to bottom, rgba(253,224,71,0.4), #ffffff); }
+.close-btn { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background-color: rgba(255,255,255,0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 16px; font-weight: bold; z-index: 10; }
+.profile-avatar { width: 72px; height: 72px; background-color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; border: 4px solid #ffffff; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 10; margin-top: 8px; margin-bottom: 12px; }
+.profile-name { font-size: 18px; font-weight: 900; color: #1f2937; margin-bottom: 4px; z-index: 10; }
+.profile-sign { font-size: 11px; color: #6b7280; font-style: italic; margin-bottom: 16px; padding: 0 16px; z-index: 10; }
+.profile-stats { display: flex; width: 100%; gap: 12px; margin-bottom: 16px; z-index: 10; }
+.stat-box { flex: 1; background-color: #f9fafb; padding: 12px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; }
+.stat-label { font-size: 10px; color: #6b7280; margin-bottom: 4px; }
+.stat-val { font-size: 20px; font-weight: 900; color: #1f2937; }
+.stat-unit { font-size: 12px; font-weight: normal; }
+.profile-actions { display: flex; width: 100%; gap: 10px; border-top: 1px solid #f3f4f6; padding-top: 12px; z-index: 10; }
+.profile-act-btn { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px 0; border-radius: 12px; font-size: 14px; font-weight: bold; background-color: #f9fafb; color: #4b5563; border: 1px solid transparent; transition: all 0.2s; }
+.act-active { background-color: #fefce8; color: #a16207; border-color: #fef08a; }
+.act-icon { margin-right: 4px; font-size: 16px; }
+
+@keyframes scaleUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+::-webkit-scrollbar { width: 0; height: 0; color: transparent; display: none; }

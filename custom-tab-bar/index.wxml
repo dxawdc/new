@@ -1,0 +1,18 @@
+<view class="tab-bar-container" style="display: {{hidden ? 'none' : 'block'}};">
+  <!-- 新增 tab-bar-inner 层隔离 padding-bottom，解决高度被挤压溢出底部的问题 -->
+  <view class="tab-bar-inner">
+    <view 
+      wx:for="{{list}}" 
+      wx:key="index" 
+      data-path="{{item.pagePath}}" 
+      data-index="{{index}}" 
+      bindtap="switchTab"
+      class="tab-item {{selected === index ? 'active' : 'inactive'}}"
+    >
+      <view class="tab-icon {{selected === index ? 'active' : 'inactive'}}">
+        {{item.icon}}
+      </view>
+      <text class="tab-text">{{item.text}}</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,12 @@
+{
+  "name": "getSquareData",
+  "version": "1.0.0",
+  "description": "获取广场信息流与排行榜数据",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

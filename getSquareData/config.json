@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "openapi": [
+      "security.msgSecCheck"
+    ]
+  },
+  "triggers": [
+    {
+      "name": "updateLeaderboardHour",
+      "type": "timer",
+      "config": "0 0 * * * * *"
+    }
+  ]
+}

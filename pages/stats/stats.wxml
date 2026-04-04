@@ -1,0 +1,129 @@
+<view class="page-container">
+  <view class="header" style="padding-top: {{statusBarHeight + 10}}px;">
+    <text class="header-title">肠道战报 📊</text>
+    <text class="header-sub">多维度了解你的规律</text>
+  </view>
+
+  <view class="main-content">
+    
+    <!-- 统计顶栏 -->
+    <view class="range-tabs">
+      <view class="tabs-wrapper">
+        <view wx:for="{{ranges}}" wx:key="key" bindtap="setRange" data-key="{{item.key}}" class="tab-item {{currentRange === item.key ? 'active' : ''}}">
+          {{item.label}}
+        </view>
+      </view>
+      
+      <!-- 汇总卡片：三列布局 -->
+      <view class="overview-card">
+        <view class="o-block">
+          <view class="o-val">{{statData.total}}<text class="o-unit">次</text></view>
+          <text class="o-label">累计噗噗</text>
+        </view>
+        <view class="o-divider"></view>
+        <view class="o-block">
+          <view class="o-val">{{statData.failedCount}}<text class="o-unit">次</text></view>
+          <text class="o-label">挣扎次数</text>
+        </view>
+        <view class="o-divider"></view>
+        <view class="o-block">
+          <view class="o-val">{{statData.mostFrequent}}</view>
+          <text class="o-label">主打形态</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="scroll-area">
+      <!-- 1. 频率趋势 -->
+      <view class="chart-card">
+        <view class="card-header">
+          <text class="card-title">📈 频率趋势</text>
+          <view class="toggle-btn" bindtap="toggleTrendView">{{trendViewType === 'line' ? '📊 柱状图' : '📈 折线图'}}</view>
+        </view>
+        
+        <view wx:if="{{trendViewType === 'bar'}}" class="bar-chart {{currentRange === 'year' ? 'compact-mode' : ''}}">
+          <view wx:for="{{statData.trend}}" wx:key="_id" class="bar-group">
+            <view class="bar-bars">
+              <view class="bar-col">
+                <text class="bar-val text-success">{{item.successVal > 0 ? item.successVal : ''}}</text>
+                <view class="bar-bg"><view class="bar-fill fill-success" style="height: {{item.successHeightPercent}}%"></view></view>
+              </view>
+              <view class="bar-col">
+                <text class="bar-val text-failed">{{item.failedVal > 0 ? item.failedVal : ''}}</text>
+                <view class="bar-bg"><view class="bar-fill fill-failed" style="height: {{item.failedHeightPercent}}%"></view></view>
+              </view>
+            </view>
+            <text class="bar-label">{{item.label}}</text>
+          </view>
+        </view>
+        <view wx:else class="line-chart">
+          <view class="line-svg" style="background-image: url('{{statData.trendSvgBg}}')"></view>
+          <view class="line-labels">
+            <text wx:for="{{statData.trend}}" wx:key="_id" class="line-label">{{item.label}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 2. 形态分布 -->
+      <view class="chart-card">
+        <view class="card-header">
+          <text class="card-title">🧬 形态分布</text>
+          <view class="toggle-btn" bindtap="toggleDistView">{{distViewType === 'list' ? '🍩 环形图' : '📋 列表'}}</view>
+        </view>
+
+        <view wx:if="{{distViewType === 'list'}}" class="list-dist">
+          <view wx:for="{{statData.distribution}}" wx:key="id" class="dist-row">
+            <text class="dist-emoji">{{item.emoji}}</text>
+            <view class="dist-info">
+              <view class="dist-header">
+                <text class="dist-name">{{item.name}} <text class="dist-count">{{item.weight}}次</text></text>
+                <text class="dist-pct">{{item.percent}}%</text>
+              </view>
+              <view class="dist-bar-bg"><view class="dist-bar-fill" style="width: {{item.percent}}%; background-color: {{item.barColor}};"></view></view>
+            </view>
+          </view>
+        </view>
+        <view wx:else class="pie-dist">
+          <view class="pie-chart" style="background: {{statData.pieGradient}}">
+            <view class="pie-hole"><text>形态</text></view>
+            <view wx:for="{{statData.pieLabels}}" wx:key="index" wx:if="{{item.show}}" class="pie-label" style="left: {{item.left}}%; top: {{item.top}}%;">
+              <text class="p-name">{{item.name}}</text>
+              <text class="p-pct">{{item.percent}}%</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 3. 时间段分布 -->
+      <view class="chart-card">
+        <view class="card-header">
+          <text class="card-title">⏰ 时间段分布</text>
+          <view class="toggle-btn" bindtap="togglePeriodView">{{periodViewType === 'list' ? '🍩 环形图' : '📋 列表'}}</view>
+        </view>
+
+        <view wx:if="{{periodViewType === 'list'}}" class="list-dist">
+          <view wx:for="{{statData.periodDistribution}}" wx:key="name" class="dist-row">
+            <text class="dist-emoji">{{item.emoji}}</text>
+            <view class="dist-info">
+              <view class="dist-header">
+                <text class="dist-name">{{item.name}} <text class="dist-count">{{item.weight}}次</text></text>
+                <text class="dist-pct">{{item.percent}}%</text>
+              </view>
+              <view class="dist-bar-bg"><view class="dist-bar-fill" style="width: {{item.percent}}%; background-color: {{item.barColor}};"></view></view>
+            </view>
+          </view>
+        </view>
+        <view wx:else class="pie-dist">
+          <view class="pie-chart" style="background: {{statData.periodPieGradient}}">
+            <view class="pie-hole"><text>时段</text></view>
+            <view wx:for="{{statData.periodPieLabels}}" wx:key="index" wx:if="{{item.show}}" class="pie-label" style="left: {{item.left}}%; top: {{item.top}}%;">
+              <text class="p-name">{{item.name}}</text>
+              <text class="p-pct">{{item.percent}}%</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+    </view>
+  </view>
+</view>

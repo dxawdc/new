@@ -1,0 +1,131 @@
+<page-meta page-style="{{ showUserProfileModal ? 'overflow: hidden;' : '' }}" />
+
+<view class="page-container">
+  <view class="header" style="padding-top: {{statusBarHeight + 10}}px;">
+    <text class="header-title">噗通广场 🌍</text>
+    <text class="header-sub">看看大家今天都拉了什么</text>
+  </view>
+
+  <view class="main-content">
+    <view class="tabs-container">
+      <view class="tab-switch">
+        <view class="tab-item {{squareTab === 'feed' ? 'active' : ''}}" bindtap="setSquareTab" data-tab="feed">动态</view>
+        <view class="tab-item {{squareTab === 'leaderboard' ? 'active' : ''}}" bindtap="setSquareTab" data-tab="leaderboard">榜单</view>
+      </view>
+    </view>
+
+    <view class="scroll-area">
+      <block wx:if="{{squareTab === 'feed'}}">
+        <view wx:if="{{!isLoading && feeds.length === 0}}" class="empty-state">暂无公开动态~</view>
+        
+        <view wx:for="{{feeds}}" wx:key="id" class="feed-card">
+          <view class="feed-header">
+            <view class="feed-user" bindtap="handleOpenProfile" data-source="{{item}}">
+              <view class="feed-avatar">{{item.avatar}}</view>
+              <view class="feed-user-info">
+                <view style="display: flex; align-items: baseline; gap: 6px;">
+                  <text class="feed-name">{{item.user}}</text>
+                  <text class="feed-publish-time">{{item.displayTime}}</text>
+                </view>
+                <text class="feed-time">用时: {{item.duration}}</text>
+              </view>
+            </view>
+            <view wx:if="{{!item.mainType || item.mainType.id === 0}}" class="feed-duration-tag failed-tag">未成功</view>
+            <view wx:else class="feed-duration-tag">顺畅度: {{item.mainType.name}}</view>
+          </view>
+          
+          <view class="feed-body" bindtap="handleOpenProfile" data-source="{{item}}">
+            <text class="feed-body-emoji">{{item.mainType ? item.mainType.emoji : '😔'}}</text>
+            <view class="feed-body-text">
+              <text class="feed-note">"{{item.note}}"</text>
+            </view>
+          </view>
+          
+          <view class="feed-footer">
+            <view class="interact-btn {{monthlyInteractions['feed_' + item.id + '_paper'] ? 'interact-active' : ''}}" bindtap="handleInteract" data-context="feed" data-feed="{{item}}" data-type="paper">
+              <text class="interact-icon">🧻</text>
+              <text wx:if="{{item.interactions.paper > 0}}">{{item.interactions.paper}}</text>
+            </view>
+            <view class="interact-btn {{monthlyInteractions['feed_' + item.id + '_clap'] ? 'interact-active' : ''}}" bindtap="handleInteract" data-context="feed" data-feed="{{item}}" data-type="clap">
+              <text class="interact-icon">👏</text>
+              <text wx:if="{{item.interactions.clap > 0}}">{{item.interactions.clap}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{isFeedLoadingMore}}" style="text-align: center; padding: 16px 0; color: #9ca3af; font-size: 12px;">正在加载更多动态...</view>
+        <view wx:if="{{!hasMoreFeeds && feeds.length > 0}}" style="text-align: center; padding: 16px 0; color: #d1d5db; font-size: 12px;">没有更多动态啦</view>
+      </block>
+
+      <block wx:if="{{squareTab === 'leaderboard'}}">
+        <scroll-view scroll-x="true" class="board-tabs" show-scrollbar="{{false}}">
+          <view class="board-tab {{boardType === 'month' ? 'active' : ''}}" bindtap="setBoardType" data-type="month">🏆 月度肝帝榜</view>
+          <view class="board-tab {{boardType === 'banana' ? 'active' : ''}}" bindtap="setBoardType" data-type="banana">🍌 香蕉大师榜</view>
+          <view class="board-tab {{boardType === 'bronze' ? 'active' : ''}}" bindtap="setBoardType" data-type="bronze">🪨 倔强青铜榜</view>
+        </scroll-view>
+        
+        <view class="board-card">
+          <view class="board-header-row">
+            <text class="col-rank">排名</text>
+            <text class="col-user">用户</text>
+            <text class="col-score">{{boardType === 'month' ? '总次数' : boardType === 'banana' ? '香蕉数' : '挣扎次数'}}</text>
+          </view>
+          
+          <view wx:if="{{!isLoading && leaderboard.length === 0}}" class="board-empty">榜单暂无数据</view>
+          
+          <view class="board-list">
+            <view wx:for="{{leaderboard}}" wx:key="id" class="board-item" bindtap="handleOpenProfile" data-source="{{item}}">
+              <view class="col-rank">
+                <text class="rank-num rank-{{index}}">{{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}}</text>
+              </view>
+              <view class="col-user">
+                <view class="board-avatar">{{item.avatar}}</view>
+                <view class="board-user-info">
+                  <text class="board-name">{{item.name}}</text>
+                  <text class="board-avg">均速 {{item.avgDuration}}</text>
+                </view>
+              </view>
+              <view class="col-score">
+                <text class="score-num">{{item.count}}</text>
+              </view>
+            </view>
+           </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view wx:if="{{showUserProfileModal}}" class="modal-overlay" catchtouchmove="preventTouchMove">
+    <view class="modal-mask" bindtap="closeProfileModal"></view>
+    <view class="profile-modal">
+      <view class="profile-header-bg"></view>
+      <view class="close-btn" bindtap="closeProfileModal">×</view>
+      
+      <view class="profile-avatar">{{showUserProfileModal.avatar}}</view>
+      <text class="profile-name">{{showUserProfileModal.name}}</text>
+      <text class="profile-sign">"{{showUserProfileModal.signature || '在马桶上思考人生，是我的日常。'}}"</text>
+      
+      <view class="profile-stats">
+        <view class="stat-box">
+          <text class="stat-label">本月噗噗</text>
+          <view class="stat-val">{{showUserProfileModal.poopCount}} <text class="stat-unit">次</text></view>
+        </view>
+        <view class="stat-box">
+          <text class="stat-label">本月挣扎</text>
+          <view class="stat-val">{{showUserProfileModal.struggleCount}} <text class="stat-unit">次</text></view>
+        </view>
+      </view>
+       
+      <view class="profile-actions">
+        <view class="profile-act-btn {{monthlyInteractions['user_' + showUserProfileModal.id + '_paper_' + currentMonthIdx] ? 'act-active' : ''}}" bindtap="handleInteract" data-context="user" data-type="paper">
+          <text class="act-icon">🧻</text>
+          <text wx:if="{{showUserProfileModal.interactions.paper > 0}}">{{showUserProfileModal.interactions.paper}}</text>
+        </view>
+        <view class="profile-act-btn {{monthlyInteractions['user_' + showUserProfileModal.id + '_clap_' + currentMonthIdx] ? 'act-active' : ''}}" bindtap="handleInteract" data-context="user" data-type="clap">
+          <text class="act-icon">👏</text>
+          <text wx:if="{{showUserProfileModal.interactions.clap > 0}}">{{showUserProfileModal.interactions.clap}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

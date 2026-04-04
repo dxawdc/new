@@ -1,0 +1,11 @@
+{
+  "miniprogramRoot": "./",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "setting": {
+    "urlCheck": false,
+    "enhance": true,
+    "es6": true
+  },
+  "appid": "xx",
+  "projectname": "BananaJournal"
+}

@@ -1,0 +1,178 @@
+<page-meta page-style="{{ isModalOpen || confirmDeleteId ? 'overflow: hidden;' : '' }}" />
+<wxs module="utils">
+  module.exports = { isToday: function(dateStr, todayStr) { return dateStr === todayStr; }, getIndex: function(arr, id) { if (!arr) return -1; return arr.indexOf(id); } }
+</wxs>
+
+<view class="page-container">
+  <view class="header" style="padding-top: {{statusBarHeight + 10}}px;">
+    <text class="header-title">历史战绩 🏆</text>
+    <text class="header-sub">你的肠道晴雨表</text>
+  </view>
+
+  <view class="main-content">
+    <view class="calendar-card" bindtouchstart="closeAllSwipes">
+      <view class="calendar-header">
+        <view class="nav-btn" bindtap="prevMonth">‹</view>
+        <view class="month-title">
+          <text>{{currentYear}}年 {{currentMonth + 1}}月</text>
+          <text wx:if="{{!isCurrentMonth}}" class="back-today" bindtap="goToToday">今</text>
+        </view>
+        <view class="nav-btn" bindtap="nextMonth">›</view>
+      </view>
+      
+      <view class="weekday-header"><text>一</text><text>二</text><text>三</text><text>四</text><text>五</text><text>六</text><text>日</text></view>
+      
+      <view class="days-grid">
+        <view wx:for="{{calendarDays}}" wx:key="_id" class="day-cell" bindtap="selectDate" data-date="{{item.date}}">
+          <view wx:if="{{!item.empty}}" class="day-box {{item.heatClass}} {{selectedDate === item.date ? 'selected-day' : ''}} {{utils.isToday(item.date, todayStr) ? 'is-today' : ''}} {{item.isFuture ? 'future-day' : ''}}">
+            <text class="day-num">{{item.day}}</text>
+            <text wx:if="{{item.emoji}}" class="day-emoji">{{item.emoji}}</text>
+            <view wx:if="{{item.hasFailed}}" class="fail-dot"></view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="selected-date-header">
+      <view style="display: flex; align-items: center;">
+        <text class="selected-date-text">📅 {{selectedDate === todayStr ? '今日' : selectedDate}} 记录</text>
+        <text wx:if="{{daySuccessCount > 0}}" class="count-badge count-success">噗噗 {{daySuccessCount}}</text>
+        <text wx:if="{{dayFailedCount > 0}}" class="count-badge count-failed">挣扎 {{dayFailedCount}}</text>
+      </view>
+      <view class="btn-add-record hover-scale" bindtap="openAddModal">+</view>
+    </view>
+
+    <view class="log-list">
+      <block wx:if="{{filteredLogs.length === 0}}">
+        <view class="empty-state"><text class="empty-text">这一天毫无波澜~</text></view>
+      </block>
+      <block wx:else>
+        <view wx:for="{{filteredLogs}}" wx:key="id" class="log-item-wrapper">
+          <scroll-view scroll-x="true" class="log-scroll" show-scrollbar="{{false}}" enhanced="{{true}}" bounces="{{false}}" scroll-left="{{scrollPositions[item.id] || 0}}" scroll-with-animation="true" bindscroll="onLogScroll" bindtouchstart="onLogTouchStart" data-id="{{item.id}}">
+            <view class="log-scroll-content">
+              <view class="log-card" bindtap="onLogCardTap" data-id="{{item.id}}">
+                <view wx:if="{{item.status === 'failed'}}" class="log-badge-failed">未成功</view>
+                <view class="log-emoji {{item.status === 'failed' ? 'emoji-failed' : 'emoji-success'}}">{{item.status === 'failed' ? '😔' : item.mainType.emoji}}</view>
+                <view class="log-content">
+                  <view class="log-header">
+                    <text class="log-type-name">{{item.status === 'failed' ? '蹲了个寂寞' : item.mainType.name}}</text>
+                    <text class="log-time-period">{{item.period}}</text>
+                  </view>
+                  <view class="log-tags">
+                    <view wx:if="{{item.status === 'success' && item.types.length > 1}}" class="tag-multi-sequence">
+                      <block wx:for="{{item.types}}" wx:for-item="typeItem" wx:for-index="typeIdx" wx:key="id">
+                        <text class="seq-emoji">{{typeItem.emoji}}</text>
+                        <text wx:if="{{typeIdx < item.types.length - 1}}" class="seq-arrow">→</text>
+                      </block>
+                    </view>
+                    <view wx:if="{{item.color}}" class="tag-color" style="background-color: {{item.color === 'brown'?'#b45309':item.color === 'green'?'#16a34a':item.color === 'black'?'#111827':item.color === 'red'?'#dc2626':'#d1d5db'}}"></view>
+                    <text wx:if="{{item.odor}}" class="tag-odor">{{item.odor}}</text>
+                  </view>
+                  <text wx:if="{{item.note}}" class="log-note">{{item.note}}</text>
+                </view>
+                <view class="log-meta">
+                   <text class="log-time-exact">{{item.time}}</text>
+                   <text class="log-duration">{{item.duration.value}}</text>
+                </view>
+              </view>
+              
+              <view class="log-actions">
+                <view class="action-btn action-edit" catchtap="openEditModal" data-log="{{item}}"><text class="action-text">修改</text></view>
+                <view class="action-btn action-delete" catchtap="handleDeleteLog" data-id="{{item.id}}"><text class="action-text">删除</text></view>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view wx:if="{{isModalOpen}}" class="modal-overlay">
+    <view class="modal-mask" bindtap="closeModal" catchtouchmove="preventTouchMove"></view>
+    <view class="modal-content">
+      <view class="modal-header" catchtouchmove="preventTouchMove">
+        <text class="modal-title">📝 记录这次的“杰作”</text>
+        <view bindtap="closeModal" class="modal-close">×</view>
+      </view>
+      
+      <scroll-view scroll-y class="modal-body">
+        <view class="status-toggle">
+          <view bindtap="setLogStatus" data-status="success" class="status-btn {{newLog.status === 'success' ? 'active' : ''}}">✨ 成功释放</view>
+          <view bindtap="setLogStatus" data-status="failed" class="status-btn {{newLog.status === 'failed' ? 'active' : ''}}">😔 努力了但没成</view>
+        </view>
+        
+        <view class="m-card">
+           <text class="m-card-title">时间段</text>
+           <scroll-view scroll-x="true" class="scroll-row" show-scrollbar="{{false}}">
+             <view wx:for="{{periods}}" wx:key="id" bindtap="setLogPeriod" data-label="{{item.label}}" class="scroll-item {{newLog.period === item.label ? 'active' : ''}}">
+               <text class="scroll-item-title">{{item.label}}</text>
+               <text class="scroll-item-sub">{{item.range}}</text>
+             </view>
+           </scroll-view>
+        </view>
+
+        <block wx:if="{{newLog.status === 'success'}}">
+          <view class="m-card">
+            <view class="m-card-header">
+              <text class="m-card-title" style="margin-bottom:0;"><text style="color: #ef4444;">*</text> 形态长什么样？</text>
+              <text class="m-card-tip">可按顺序多选</text>
+            </view>
+            <view class="grid-3">
+              <view wx:for="{{bristolTypes}}" wx:key="id" bindtap="toggleType" data-id="{{item.id}}" class="type-item {{utils.getIndex(newLog.selectedTypeIds, item.id) !== -1 ? 'active' : ''}}">
+                <view wx:if="{{utils.getIndex(newLog.selectedTypeIds, item.id) !== -1}}" class="type-idx">{{utils.getIndex(newLog.selectedTypeIds, item.id) + 1}}</view>
+                <text class="type-emoji">{{item.emoji}}</text>
+                <text class="type-name">{{item.name}}</text>
+                <text class="type-desc">{{item.desc}}</text>
+              </view>
+            </view>
+          </view>
+          
+          <view class="m-card">
+            <text class="m-card-title">颜色 (可选)</text>
+            <scroll-view scroll-x="true" class="scroll-row" show-scrollbar="{{false}}">
+              <view wx:for="{{colors}}" wx:key="id" bindtap="setLogColor" data-id="{{item.id}}" class="color-item {{newLog.colorId === item.id ? 'active' : ''}}">
+                <view class="color-circle" style="background-color: {{item.hex}}"></view>
+                <text class="color-name">{{item.name}}</text>
+              </view>
+            </scroll-view>
+            <text class="m-card-title">气味 (可选)</text>
+            <view class="tags-wrap">
+              <view wx:for="{{odors}}" wx:key="*this" bindtap="setLogOdor" data-odor="{{item}}" class="tag-btn {{newLog.odor === item ? 'active' : ''}}">{{item}}</view>
+            </view>
+          </view>
+        </block>
+
+        <view class="m-card">
+          <text class="m-card-title">{{newLog.status === 'success' ? '蹲了多久？' : '挣扎了多久？'}}</text>
+          <view class="flex-row">
+            <view wx:for="{{durations}}" wx:key="id" bindtap="setLogDuration" data-id="{{item.id}}" class="duration-item {{newLog.durationId === item.id ? 'active' : ''}}">
+              <text class="duration-name">{{item.label}}</text>
+              <text class="duration-desc">{{item.desc}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="m-card" style="margin-bottom: 20px;">
+          <text class="m-card-title">说点什么 (选填)</text>
+          <textarea class="note-area" value="{{newLog.note}}" bindinput="onNoteInput" maxlength="21" placeholder="{{randomPlaceholder}}" />
+        </view>
+      </scroll-view>
+
+      <view class="modal-footer" catchtouchmove="preventTouchMove">
+        <view bindtap="handleLogSubmit" class="submit-btn {{newLog.status === 'success' ? 'submit-success' : 'submit-failed'}}">打卡完成！</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{confirmDeleteId}}" class="confirm-modal">
+     <view class="confirm-mask" bindtap="closeConfirmModal" catchtouchmove="preventTouchMove"></view>
+     <view class="confirm-content">
+        <view class="confirm-icon">🗑️</view>
+        <text class="confirm-title">确认删除记录？</text>
+        <view class="confirm-actions">
+          <view bindtap="closeConfirmModal" class="btn-cancel hover-scale">取消</view>
+          <view bindtap="executeDelete" class="btn-delete hover-scale">确认删除</view>
+        </view>
+     </view>
+  </view>
+</view>

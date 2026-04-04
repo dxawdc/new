@@ -1,0 +1,219 @@
+<page-meta page-style="{{ showReportModal || selectedPartner || showNoticeModal ? 'overflow: hidden;' : '' }}" />
+
+<view class="page-container">
+  <view class="header" style="padding-top: {{statusBarHeight + 10}}px;">
+    <text class="header-title">香蕉手记 🍌</text>
+    <text class="header-sub">管理档案与查阅报告</text>
+  </view>
+
+  <view class="main-content">
+    
+    <view class="user-header">
+      <view class="uh-left">
+        <view class="uh-avatar">{{userProfile.avatar}}</view>
+        <view class="uh-info">
+          <text class="uh-nickname">{{userProfile.nickname}}</text>
+          <text class="uh-signature">"{{userProfile.signature || '这个人很懒，什么都没写'}}"</text>
+        </view>
+      </view>
+      <view class="uh-edit hover-scale" bindtap="openEditModal">
+        <text class="uh-edit-icon">✎</text><text>编辑</text>
+      </view>
+    </view>
+
+    <view class="status-card {{timeSinceLastPoop.isWarning ? 'status-danger' : 'status-safe'}}">
+      <text class="s-label">距离上次噗通已过去</text>
+      <view class="s-time">{{timeSinceLastPoop.text}}</view>
+      <view wx:if="{{timeSinceLastPoop.isWarning}}" class="s-warning">
+         <text class="s-warning-icon">!</text> 警报：需要关注肠道健康啦！
+      </view>
+    </view>
+
+    <view class="report-btn hover-scale" bindtap="openReportModal">
+      <view class="r-glow-1"></view><view class="r-glow-2"></view>
+      <view class="r-content">
+        <view class="r-info">
+          <text class="r-title">📊 {{currentMonthIdx + 1}}月 噗通报告</text>
+          <text class="r-sub">查看你的肠道健康与社交羁绊</text>
+        </view>
+        <view class="r-arrow">›</view>
+      </view>
+    </view>
+
+    <view class="partner-card">
+      <view class="partner-header">
+        <text class="partner-title">💖 密友空间</text><text class="partner-tag">可添加多人</text>
+      </view>
+      <scroll-view scroll-x="true" class="partner-list" show-scrollbar="{{false}}">
+         <view class="partner-list-inner">
+           <view wx:for="{{partners}}" wx:key="id" class="partner-item hover-scale" bindtap="openPartnerModal" data-partner="{{item}}">
+              <view class="partner-avatar-wrap">
+                 <text class="partner-emoji">{{item.avatar}}</text>
+                 <view wx:if="{{item.statusType === 'danger'}}" class="partner-dot-danger"></view>
+              </view>
+              <text class="partner-name">{{item.remark || item.name}}</text>
+              <text class="partner-status">{{item.statusType === 'danger' ? '需关心' : '状态佳'}}</text>
+           </view>
+           <button open-type="share" class="partner-add hover-scale" catchtap="preventBubble">
+              <view class="partner-add-icon">+</view><text class="partner-add-text">邀请密友</text>
+           </button>
+         </view>
+      </scroll-view>
+    </view>
+
+    <view class="settings-card">
+      <text class="settings-title">设置</text>
+      
+      <view class="setting-row border-bottom" bindtap="openNoticeModal">
+        <view class="setting-info">
+          <text class="setting-label">互动与消息</text>
+          <text class="setting-desc">密友提醒及广场动态通知</text>
+        </view>
+        <view class="setting-right">
+          <view wx:if="{{unreadCount > 0}}" class="unread-badge">{{unreadCount}}</view>
+          <text class="arrow">›</text>
+        </view>
+      </view>
+
+      <view class="setting-row" bindtap="togglePublic">
+        <view class="setting-info">
+          <text class="setting-label">参与公开排行榜</text>
+          <text class="setting-desc">开启后你的成就将展示在广场榜单中</text>
+        </view>
+        <view class="switch-btn {{userProfile.isPublic ? 'switch-on' : 'switch-off'}}"><view class="switch-knob"></view></view>
+      </view>
+    </view>
+    
+  </view>
+
+  <view wx:if="{{showEditProfileModal}}" class="modal-overlay">
+    <view class="modal-mask" bindtap="closeEditModal" catchtouchmove="preventTouchMove"></view>
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">编辑资料 ✏️</text>
+        <view bindtap="closeEditModal" class="modal-close">×</view>
+      </view>
+      <scroll-view scroll-y class="modal-body pb-safe">
+        <view class="form-group">
+          <text class="form-label">专属头像</text>
+          <scroll-view scroll-x="true" class="avatar-scroll" show-scrollbar="{{false}}">
+            <view class="avatar-list">
+              <view wx:for="{{avatarOptions}}" wx:key="*this" bindtap="setEditAvatar" data-emoji="{{item}}" class="avatar-option {{editForm.avatar === item ? 'avatar-active' : ''}}">{{item}}</view>
+            </view>
+          </scroll-view>
+        </view>
+        <view class="form-group">
+          <text class="form-label">花名 / 昵称 (限7字)</text>
+          <input class="form-input" value="{{editForm.nickname}}" maxlength="7" bindinput="setEditNickname" placeholder="输入你的霸气花名" cursor-spacing="80" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">个性签名 (限21字)</text>
+          <textarea class="form-textarea" value="{{editForm.signature}}" maxlength="21" bindinput="setEditSignature" placeholder="写一句有趣的排便感悟吧..." cursor-spacing="80" disable-default-padding="{{true}}" />
+        </view>
+        <view class="modal-footer" style="position: relative; padding: 0;">
+           <view bindtap="handleSaveProfile" class="submit-btn submit-dark hover-scale">保存修改</view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{showNoticeModal}}" class="modal-overlay">
+    <view class="modal-mask" bindtap="closeNoticeModal" catchtouchmove="preventTouchMove"></view>
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">消息盒子 📬</text>
+        <view bindtap="closeNoticeModal" class="modal-close">×</view>
+      </view>
+      <scroll-view scroll-y class="modal-body pb-safe" style="height: 60vh;">
+         <view wx:if="{{notifications.length === 0}}" class="empty-state"><text class="empty-text">暂无新消息哦~</text></view>
+         <view wx:else class="notice-list">
+           <view wx:for="{{notifications}}" wx:key="id" class="notice-item {{item.isPartner ? 'notice-highlight' : ''}}">
+              <view class="notice-avatar">{{item.avatar}}</view>
+              <view class="notice-info">
+                 <view style="display:flex; align-items:center;">
+                   <text class="notice-name">{{item.name}}</text>
+                   <text wx:if="{{item.isPartner}}" class="notice-tag">密友专属</text>
+                 </view>
+                 <text class="notice-content">{{item.content}}</text>
+                 <text class="notice-time">{{utils.formatDate(item.time)}}</text>
+              </view>
+           </view>
+         </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{showReportModal}}" class="report-overlay" catchtouchmove="preventTouchMove" bindtap="closeReportModal">
+    <view class="report-nav" style="padding-top: {{statusBarHeight + 60}}px;" catchtap="preventBubble">
+      <text class="report-tag">MONTHLY REPORT</text><view bindtap="closeReportModal" class="report-close">×</view>
+    </view>
+    <view class="report-poster" catchtap="preventBubble">
+      <view class="poster-glow"></view>
+      <view class="poster-header"><text class="poster-title">{{currentMonthIdx + 1}}月 噗通报告</text><text class="poster-sub">{{reportData.summaryTitle}}</text></view>
+      <view class="poster-stats">
+        <view class="p-stat-row">
+           <view class="p-stat-box p-stat-half" style="flex: 1.3; background-color: rgba(253, 224, 71, 0.15); border-color: rgba(253, 224, 71, 0.3);">
+              <text class="p-stat-label" style="color: #fde047;">🎉 成功噗噗</text><view class="p-stat-val">{{reportData.pupuCount}}<text class="p-stat-unit"> 次</text></view><text class="p-stat-desc">含完美香蕉 {{reportData.bananaCount}} 根</text>
+           </view>
+           <view class="p-stat-box p-stat-half" style="background-color: rgba(248, 113, 113, 0.15); border-color: rgba(248, 113, 113, 0.3);">
+              <text class="p-stat-label" style="color: #fca5a5;">💦 遗憾挣扎</text><view class="p-stat-val">{{reportData.struggleCount}}<text class="p-stat-unit"> 次</text></view><text class="p-stat-desc">努力了但没出</text>
+           </view>
+        </view>
+        <view class="p-stat-box p-stat-full"><text class="p-stat-label">本月在马桶上共度过</text><view class="p-stat-val">{{reportData.totalTime}} <text class="p-stat-unit">分钟</text></view><text class="p-stat-desc">{{reportData.timeDesc}}</text></view>
+        <view class="p-stat-box p-stat-full">
+          <view class="flex-between">
+            <view><text class="p-stat-label">综合健康评分</text><view class="p-stat-score">{{reportData.score}} <text class="p-stat-unit text-white">分</text></view></view>
+            <view class="text-right"><text class="p-stat-title">本月称号</text><view class="p-honor">{{reportData.honor}}</view></view>
+          </view>
+        </view>
+        <view class="p-summary-box"><text class="p-summary-text">"{{reportData.summaryDesc}}"</text></view>
+      </view>
+      <text class="poster-copyright">© 香蕉手记 BANANA JOURNAL</text>
+    </view>
+  </view>
+
+  <view wx:if="{{selectedPartner}}" class="modal-overlay">
+    <view class="modal-mask" bindtap="closePartnerModal" catchtouchmove="preventTouchMove"></view>
+    <view class="partner-detail-content">
+      <view class="pd-header"><text class="pd-title">💖 密友空间</text><view bindtap="closePartnerModal" class="pd-close">×</view></view>
+      <view class="pd-user">
+         <view class="pd-avatar">{{selectedPartner.avatar}}</view>
+        <view wx:if="{{isEditingRemark}}" class="pd-name-edit-wrap">
+          <input class="pd-name-input" value="{{editRemarkText}}" bindinput="onRemarkInput" placeholder="设置专属备注" auto-focus />
+          <view class="pd-name-save" bindtap="saveRemark">✓</view>
+        </view>
+        <view wx:else class="pd-name-show-wrap" bindtap="startEditRemark">
+          <text class="pd-name">{{selectedPartner.remark ? selectedPartner.remark + ' (' + selectedPartner.name + ')' : selectedPartner.name}}</text>
+          <text class="pd-edit-icon">✎</text>
+        </view>
+        <text class="pd-days">相伴噗通的第 {{selectedPartner.days}} 天</text>
+      </view>
+      <view class="pd-status-card {{selectedPartner.statusType === 'danger' ? 'pd-danger' : 'pd-safe'}}">
+        <text class="pd-s-label">状态监控</text>
+        <view class="pd-s-main">
+          <view class="pd-s-text"><text class="pd-s-title">{{selectedPartner.status}}</text><text class="pd-s-desc">最近记录: {{selectedPartner.lastRecord}}</text></view>
+          <text class="pd-s-emoji">{{selectedPartner.lastEmoji}}</text>
+        </view>
+      </view>
+      <text class="pd-action-title">关心一下TA：</text>
+      <view class="pd-actions">
+        <view bindtap="handlePartnerInteract" data-partner-id="{{selectedPartner.id}}" data-type="water" class="pd-btn {{partnerActionStatus.water.disabled ? 'pd-btn-disabled' : 'pd-btn-blue'}} hover-scale"><text class="pd-btn-icon">{{partnerActionStatus.water.disabled ? '⏳' : '💧'}}</text><text class="pd-btn-text">{{partnerActionStatus.water.disabled ? partnerActionStatus.water.countdownStr : '提醒喝水'}}</text></view>
+        <view bindtap="handlePartnerInteract" data-partner-id="{{selectedPartner.id}}" data-type="paper" class="pd-btn {{partnerActionStatus.paper.disabled ? 'pd-btn-disabled' : 'pd-btn-gray'}} hover-scale"><text class="pd-btn-icon">{{partnerActionStatus.paper.disabled ? '⏳' : '🧻'}}</text><text class="pd-btn-text">{{partnerActionStatus.paper.disabled ? partnerActionStatus.paper.countdownStr : '递纸巾'}}</text></view>
+        <view bindtap="handlePartnerInteract" data-partner-id="{{selectedPartner.id}}" data-type="poke" class="pd-btn {{partnerActionStatus.poke.disabled ? 'pd-btn-disabled' : 'pd-btn-pink'}} hover-scale"><text class="pd-btn-icon">{{partnerActionStatus.poke.disabled ? '⏳' : '👉'}}</text><text class="pd-btn-text">{{partnerActionStatus.poke.disabled ? partnerActionStatus.poke.countdownStr : '戳一戳'}}</text></view>
+      </view>
+      <view class="pd-footer"><text class="pd-f-text">你们共同完成了 {{selectedPartner.totalRecords}} 次健康记录</text></view>
+      <view class="pd-unbind-wrap">
+         <view class="pd-unbind-btn hover-scale" bindtap="handleUnbindPartner"><text class="pd-unbind-icon">✕</text><text>解除密友关系</text></view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<wxs module="utils">
+  module.exports = {
+    formatDate: function(timestamp) {
+       var d = getDate(timestamp);
+       return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate() + ' ' + d.getHours() + ':' + d.getMinutes();
+    }
+  }
+</wxs>
