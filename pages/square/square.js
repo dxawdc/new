@@ -56,14 +56,6 @@ Page({
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 3, hidden: false });
     }
-
-    // 检查其他页面（首页/历史）是否触发了删除，需要强制刷新广场动态
-    const app = getApp();
-    if (app._squareFeedNeedsRefresh) {
-      app._squareFeedNeedsRefresh = false;
-      lastFeedFetchTime = 0; // 重置防抖时间戳，确保本次强制重新拉取
-    }
-
     const now = Date.now();
     if (now - lastFeedFetchTime > 60000 || this.data.feeds.length === 0) {
       this.fetchFeeds();
@@ -90,46 +82,42 @@ Page({
 
   async fetchFeeds(force = false, isLoadMore = false) {
     if (!isLoadMore && !force && this.data.feeds.length === 0) wx.showNavigationBarLoading();
-
+    
     let targetPage = isLoadMore ? this.data.feedPage + 1 : 0;
 
     try {
       const feedRes = await wx.cloud.callFunction({
         name: 'getSquareData',
-        data: { action: 'getFeeds', page: targetPage }
-        // pageSize 由云函数固定为10，前端不再传入
+        data: { action: 'getFeeds', page: targetPage, pageSize: 20 }
       });
 
       const rawData = feedRes.result?.data || [];
-      // 直接使用云函数返回的 hasMore，精准判断是否还有下一页
-      const hasMore = feedRes.result?.hasMore ?? false;
-
       const formattedFeeds = rawData.map(item => {
         let displayMainType = item.mainType;
         if (item.status === 'failed' || !displayMainType) {
           displayMainType = { name: '没拉出来', emoji: '💨', id: 0 };
         }
-        return {
-          ...item,
+        return { 
+          ...item, 
           id: item._id,
-          mainType: displayMainType,
+          mainType: displayMainType, 
           displayTime: formatTimeAgo(item.createTime || item.createdAt || item.timestamp || item._createTime)
         };
       });
 
       let nextFeeds = isLoadMore ? [...this.data.feeds, ...formattedFeeds] : formattedFeeds;
-
-      this.setData({
+      
+      this.setData({ 
         feeds: nextFeeds,
         feedPage: targetPage,
-        hasMoreFeeds: hasMore, // 由云函数精准告知，不再靠条数猜测
+        hasMoreFeeds: rawData.length === 20, // 如果返回刚好20条说明可能还有下一页
         isFeedLoadingMore: false
       });
 
       // 仅将第一页数据存入本地缓存，供下次秒开
       if (!isLoadMore) {
-        wx.setStorageSync('square_cache_feeds', nextFeeds.slice(0, 10));
-        lastFeedFetchTime = Date.now();
+        wx.setStorageSync('square_cache_feeds', nextFeeds.slice(0, 20));
+        lastFeedFetchTime = Date.now(); 
       }
     } catch (err) {
       console.error('动态拉取失败', err);

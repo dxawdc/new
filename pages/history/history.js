@@ -174,30 +174,11 @@ Page({
   async executeDelete() {
     wx.showLoading({ title: '删除中...', mask: true });
     try {
-      const deletingId = this.data.confirmDeleteId;
-      await wx.cloud.callFunction({ name: 'getSquareData', data: { action: 'deleteLog', logId: deletingId } });
-      this.deleteLog(deletingId);
+      await wx.cloud.callFunction({ name: 'getSquareData', data: { action: 'deleteLog', logId: this.data.confirmDeleteId } });
+      this.deleteLog(this.data.confirmDeleteId);
       this.setData({ confirmDeleteId: null });
       this.generateCalendar();
-
-      // 同步清理广场缓存，确保下次进广场不会展示已删除的动态
-      this._syncDeleteToSquare(deletingId);
-
       wx.hideLoading(); wx.showToast({ title: '已删除', icon: 'success' });
     } catch(err) { wx.hideLoading(); wx.showToast({ title: '删除失败', icon: 'none' }); }
-  },
-
-  // 删除记录后同步清理广场侧的缓存与内存数据
-  _syncDeleteToSquare(deletedLogId) {
-    try {
-      const cachedFeeds = wx.getStorageSync('square_cache_feeds') || [];
-      const filtered = cachedFeeds.filter(f => f.logId !== deletedLogId);
-      wx.setStorageSync('square_cache_feeds', filtered);
-    } catch (e) {
-      console.warn('清理广场磁盘缓存失败', e);
-    }
-
-    const app = getApp();
-    app._squareFeedNeedsRefresh = true;
   }
 });

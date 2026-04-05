@@ -32,50 +32,22 @@ async function buildLeaderboard(boardType) {
   })
 }
 
-// =========== 文本合规检查辅助函数（2.0 版本）===========
-// suggest 有三种值：
-//   'pass'   → 内容正常，放行
-//   'review' → 疑似违规，需人工审核（本项目选择直接拦截，偏保守策略）
-//   'risky'  → 确定违规，拦截
-async function checkTextSec(text, openid) {
-  if (!text || text.trim() === '') return { code: 0 };
+// 文本合规检查辅助函数
+async function checkTextSec(text) {
+  if (!text) return { code: 0 };
   try {
-    const res = await cloud.openapi.security.msgSecCheck({
-      version: 2,     // 固定值 2，使用 2.0 接口
-      scene: 2,       // 场景：1=资料 2=评论 3=论坛 4=社交日志，备注属于"评论"场景
-      openid,         // 必填：发起请求的用户 openid（用户需在近 2 小时内访问过小程序）
-      content: text,
-    });
-
-    // 2.0 接口正常情况下不抛异常，通过 result.suggest 字段判断结果
-    const suggest = res.result && res.result.suggest;
-    if (suggest === 'risky' || suggest === 'review') {
-      // 记录命中详情，方便后续排查
-      console.warn('[checkText] 内容违规，detail:', JSON.stringify(res.detail));
-      return { code: 87014, msg: '内容包含违规信息', suggest, detail: res.detail };
-    }
-
-    return { code: 0, suggest: 'pass' };
+    const res = await cloud.openapi.security.msgSecCheck({ content: text });
+    return { code: 0, res };
   } catch (err) {
-    // 61010：用户近 2 小时内未访问小程序，openid 失效
-    // 40003：openid 无效
-    // 以上两种情况说明接口本身可用，但凭证问题，按需决定是否拦截
-    // 其余异常（权限未开通、网络超时等）兜底放行，避免误拦截正常用户
-    const errCode = err.errCode || err.errcode;
-    console.error('[checkText] 接口异常，errCode:', errCode, err.errMsg || err.message);
-    if (errCode === 61010 || errCode === 40003) {
-      // openid 问题：保守策略可在此拦截，宽松策略则放行
-      // 当前选择放行，避免因 openid 失效误伤用户
-      return { code: 0, msg: '放行(openid失效)' };
-    }
-    return { code: 0, msg: '放行(接口异常)' };
+    if (err.errCode === 87014) return { code: 87014, msg: '内容包含违规信息' };
+    return { code: 0, msg: '放行(未配置权限或异常)' }; // 兼容未开通权限的小程序
   }
 }
 
 exports.main = async (event, context) => {
-  const { action, boardType, page = 0 } = event 
+  const { action, boardType, page = 0, pageSize = 20 } = event 
   const wxContext = cloud.getWXContext()
-  const myOpenId = wxContext.OPENID  // 云函数自动从请求上下文中取，安全可信
+  const myOpenId = wxContext.OPENID
 
   if (event.Type === 'Timer' || action === 'generateLeaderboardCache') {
     try {
@@ -87,13 +59,12 @@ exports.main = async (event, context) => {
     } catch (err) { return { code: -1, msg: err.message } }
   }
   
-  // =========== 文本合规校验（2.0）===========
-  // openid 直接从云函数上下文取，前端无需传递，也无法伪造
+  // =========== 核心优化1：微信合规校验 ===========
   if (action === 'checkText') {
-    return await checkTextSec(event.text, myOpenId);
+    return await checkTextSec(event.text);
   }
 
-  // =========== 突破 100 条限制，云端安全下发所有记录 ===========
+  // =========== 核心优化2：突破 100 条限制，云端安全下发所有记录 ===========
   if (action === 'getAllLogs') {
     try {
       const countRes = await db.collection('logs').where({ _openid: myOpenId }).count();
@@ -111,25 +82,29 @@ exports.main = async (event, context) => {
     } catch (err) { return { code: -1, msg: err.message } }
   }
 
-  // =========== 安全的云端写库与广场同步 ===========
+  // =========== 核心优化3：安全的云端写库与广场同步 ===========
   if (action === 'saveLog') {
     const { logData, isEdit, logId, userProfile } = event;
     logData._openid = myOpenId; 
     try {
       let resId = logId;
       if (isEdit) {
+        // 先查出老数据，用于兼容查找老版本的广场动态
         const oldLogRes = await db.collection('logs').doc(logId).get().catch(() => null);
         const oldLog = oldLogRes ? oldLogRes.data : null;
 
+        // 1. 修改个人记录
         await db.collection('logs').doc(logId).set({ data: logData });
         
+        // 2. 同步更新或删除广场关联动态
         if (userProfile && userProfile.isPublic) {
           const orConditions = [{ logId: logId, _openid: myOpenId }];
           if (oldLog && oldLog.note && oldLog.note.trim() !== '') {
-            orConditions.push({ note: oldLog.note.trim(), _openid: myOpenId });
+            orConditions.push({ note: oldLog.note.trim(), _openid: myOpenId }); // 兼容老数据
           }
 
           if (logData.note && logData.note.trim() !== '') {
+            // 如果修改后还有 note，则更新广场动态
             await db.collection('feeds').where(_.or(orConditions)).update({
               data: {
                 status: logData.status,
@@ -138,24 +113,27 @@ exports.main = async (event, context) => {
                 note: logData.note.trim(),
                 user: userProfile.nickname,
                 avatar: userProfile.avatar,
-                logId: logId
+                logId: logId // 顺便把老数据的 logId 补齐，以后找起来更准
               }
             });
           } else {
+            // 如果把 note 清空了，按照规则应该从广场移除
             await db.collection('feeds').where(_.or(orConditions)).remove();
           }
         }
       } else {
+        // 1. 新增个人记录
         const res = await db.collection('logs').add({ data: logData });
         resId = res._id;
         
+        // 2. 同步推送到广场
         if (logData.note && logData.note.trim() !== '' && userProfile && userProfile.isPublic) {
           await db.collection('feeds').add({
             data: {
               _openid: myOpenId, user: userProfile.nickname, avatar: userProfile.avatar, status: logData.status,
               mainType: logData.mainType, duration: logData.duration.value, note: logData.note.trim(),
               interactions: { paper: 0, clap: 0 }, createTime: db.serverDate(),
-              logId: resId
+              logId: resId // 绑定唯一标识
             }
           });
         }
@@ -166,53 +144,34 @@ exports.main = async (event, context) => {
 
   if (action === 'deleteLog') {
     try {
+      // 1. 先查出原记录，获取它里面可能存在的 note
       const logRes = await db.collection('logs').doc(event.logId).get().catch(() => null);
+      
+      // 2. 删除个人历史记录
       await db.collection('logs').doc(event.logId).remove();
       
+      // 3. 语法修正：精准同步删除广场动态
       if (logRes && logRes.data) {
         const oldLog = logRes.data;
         const orConditions = [{ logId: event.logId, _openid: myOpenId }];
+        // 兼容没有存 logId 的老数据
         if (oldLog.note && oldLog.note.trim() !== '') {
           orConditions.push({ note: oldLog.note.trim(), _openid: myOpenId }); 
         }
+        
+        // 使用正确的 _.or() 语法进行删除
         await db.collection('feeds').where(_.or(orConditions)).remove();
       }
       return { code: 0, msg: '删除成功' };
     } catch (err) { return { code: -1, msg: err.message }; }
   }
 
-  // =========== 广场业务 ===========
+  // =========== 原有广场业务 ===========
   if (action === 'getFeeds') {
     try {
-      // 展示规则：3天内 且 总量不超过100条，每页10条
-      const PAGE_SIZE = 10;
-      const MAX_TOTAL = 100;
-      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 3600 * 1000);
-      const skip = page * PAGE_SIZE;
-
-      // 超出100条总量上限则直接返回空
-      if (skip >= MAX_TOTAL) return { code: 0, data: [], total: MAX_TOTAL, hasMore: false };
-
-      // 实际每次最多取到第100条为止
-      const actualLimit = Math.min(PAGE_SIZE, MAX_TOTAL - skip);
-
-      // 并行执行：拉数据 + 查总数
-      const [res, countRes] = await Promise.all([
-        db.collection('feeds')
-          .where({ createTime: _.gte(threeDaysAgo) })
-          .orderBy('createTime', 'desc')
-          .skip(skip)
-          .limit(actualLimit)
-          .get(),
-        db.collection('feeds')
-          .where({ createTime: _.gte(threeDaysAgo) })
-          .count()
-      ]);
-
-      const total = Math.min(countRes.total, MAX_TOTAL);
-      const hasMore = skip + res.data.length < total;
-
-      return { code: 0, data: res.data, total, hasMore }
+      const res = await db.collection('feeds').where({ createTime: _.gte(new Date(Date.now() - 3 * 24 * 3600 * 1000)) })
+        .orderBy('createTime', 'desc').skip(page * pageSize).limit(pageSize).get()
+      return { code: 0, data: res.data }
     } catch (err) { return { code: -1, msg: err.message } }
   }
 
@@ -237,11 +196,11 @@ exports.main = async (event, context) => {
     } catch (err) { return { code: -1, msg: err.message } }
   }
 
-  // =========== 互动与消息通知 ===========
+  // =========== 互动与消息通知核心逻辑 ===========
   if (action === 'interact') {
     const { context: interactContext, targetId, type } = event; 
     try {
-      let notifyOpenId = targetId;
+      let notifyOpenId = targetId; // 默认是对人的点赞
       if (interactContext === 'feed') {
         const feedRes = await db.collection('feeds').doc(targetId).get();
         notifyOpenId = feedRes.data._openid;
@@ -250,12 +209,15 @@ exports.main = async (event, context) => {
         await db.collection('users').where({ _openid: targetId }).update({ data: { [`interactions.${type}`]: _.inc(1) } });
       }
 
+      // 如果不是自己给自己点赞，则写一条消息通知
+    //if (notifyOpenId !== myOpenId) {
       await db.collection('interactions').add({
         data: {
           to_user_id: notifyOpenId, from_user_id: myOpenId,
           type: type, context: interactContext, isPartner: false, read: false, createTime: db.serverDate()
         }
       });
+    //}
       return { code: 0, msg: '互动成功' }
     } catch (err) { return { code: -1, msg: err.message } }
   }
@@ -267,9 +229,10 @@ exports.main = async (event, context) => {
 
       const res = await db.collection('interactions').where(_.or([
         { to_user_id: myOpenId },
-        { to_user_id: myDocId }
+        { to_user_id: myDocId } // 兼容密友传 _id 的情况
       ])).orderBy('createTime', 'desc').limit(50).get();
 
+      // 查询发件人信息
       const userIds = [...new Set(res.data.map(n => n.from_user_id))];
       const uRes = await db.collection('users').where(_.or([{ _openid: _.in(userIds) }, { _id: _.in(userIds) }])).get();
       const usersMap = {};
@@ -282,6 +245,7 @@ exports.main = async (event, context) => {
         else if (n.type === 'paper') content = '给你递了纸巾 🧻';
         else if (n.type === 'water') content = '关心你，提醒你喝水啦 💧';
         else if (n.type === 'poke') content = '悄悄地戳了戳你 👉';
+
         return { id: n._id, avatar: u.avatar, name: u.nickname, content, isPartner: n.isPartner || false, read: n.read, time: n.createTime }
       });
       return { code: 0, data: formatted, unreadCount: formatted.filter(n => !n.read).length };
